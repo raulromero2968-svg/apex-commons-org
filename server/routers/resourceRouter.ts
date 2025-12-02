@@ -771,4 +771,19 @@ export const resourceRouter = router({
 
     return picks;
   }),
+
+  /**
+   * GET MY RESOURCES (Protected)
+   * Fetches all resources uploaded by the logged-in user, regardless of status.
+   */
+  getMyResources: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      return await db.select()
+        .from(resources)
+        .where(eq(resources.contributorId, ctx.user.id))
+        .orderBy(desc(resources.createdAt));
+    }),
 });

@@ -14,6 +14,7 @@ import {
   userRouter,
   moderationRouter,
   metricsRouter,
+  reputationRouter,
 } from "./routers/index";
 
 export const appRouter = router({
@@ -66,6 +67,7 @@ export const appRouter = router({
   user: userRouter,
   moderation: moderationRouter,
   metrics: metricsRouter,
+  reputation: reputationRouter,
 });
 
 export type AppRouter = typeof appRouter;
