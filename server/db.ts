@@ -1,15 +1,20 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-serverless";
+import * as schema from "../drizzle/schema";
+import * as relations from "../drizzle/relations";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+// Combine schema and relations for full relational query support
+const fullSchema = { ...schema, ...relations };
+
+let _db: ReturnType<typeof drizzle<typeof fullSchema>> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(process.env.DATABASE_URL, { schema: fullSchema });
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -17,6 +22,8 @@ export async function getDb() {
   }
   return _db;
 }
+
+export type DbInstance = NonNullable<typeof _db>;
 
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.id) {
