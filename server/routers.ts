@@ -5,9 +5,11 @@ import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { waitlist } from "../drizzle/schema";
 import { getDb } from "./db";
+import { resourcesRouter } from "./resourcesRouter";
 
 export const appRouter = router({
   system: systemRouter,
+  resources: resourcesRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
