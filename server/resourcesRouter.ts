@@ -3,6 +3,53 @@ import { eq, desc, asc, like, or, and, sql } from "drizzle-orm";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { resources, contributors, type Resource, type Contributor } from "../drizzle/schema";
+import { storagePut, storageGet } from "./storage";
+
+// Validation schemas (exported for client-side reuse)
+export const CATEGORIES = [
+  "Mathematics",
+  "Science",
+  "History",
+  "Computer Science",
+  "Language Arts",
+  "Social Studies",
+  "Arts",
+  "Physical Education",
+  "Other",
+] as const;
+
+export const GRADE_LEVELS = [
+  "Elementary",
+  "Middle School",
+  "High School",
+  "University",
+  "Professional",
+] as const;
+
+export const RESOURCE_TYPES = [
+  "Lesson Plan",
+  "Worksheet",
+  "Video",
+  "Interactive",
+  "Assessment",
+  "Presentation",
+  "Article",
+  "Other",
+] as const;
+
+// Create resource input schema
+const createResourceInput = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters").max(200, "Title too long"),
+  description: z.string().min(10, "Description must be at least 10 characters").max(2000, "Description too long"),
+  category: z.enum(CATEGORIES),
+  gradeLevel: z.enum(GRADE_LEVELS),
+  resourceType: z.enum(RESOURCE_TYPES),
+  tags: z.string().optional(),
+  fileData: z.string().optional(), // Base64 encoded file for small files
+  fileName: z.string().optional(),
+  mimeType: z.string().optional(),
+  fileSize: z.string().optional(),
+});
 
 // Input schema for resource listing
 const getResourcesInput = z.object({
@@ -214,6 +261,124 @@ export const resourcesRouter = router({
         .where(eq(resources.id, input.resourceId));
 
       return { success: true };
+    }),
+
+  // Create a new resource
+  create: protectedProcedure
+    .input(createResourceInput)
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+
+      // Generate unique ID
+      const resourceId = `res_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Handle file upload if provided
+      let fileUrl: string | null = null;
+      if (input.fileData && input.fileName) {
+        try {
+          // Decode base64 and upload to storage
+          const fileBuffer = Buffer.from(input.fileData, "base64");
+          const storageKey = `resources/${resourceId}/${input.fileName}`;
+          const uploadResult = await storagePut(
+            storageKey,
+            fileBuffer,
+            input.mimeType || "application/octet-stream"
+          );
+          fileUrl = uploadResult.url;
+        } catch (error) {
+          console.error("File upload failed:", error);
+          // Continue without file - don't fail the entire operation
+        }
+      }
+
+      if (!db) {
+        // Return mock success for demo mode
+        return {
+          success: true,
+          resourceId,
+          message: "Resource created successfully (demo mode)",
+        };
+      }
+
+      // Find or create contributor for the user
+      let contributorId: string;
+      const existingContributor = await db
+        .select()
+        .from(contributors)
+        .where(eq(contributors.userId, ctx.user.id))
+        .limit(1);
+
+      if (existingContributor.length > 0) {
+        contributorId = existingContributor[0].id;
+        // Update contribution count
+        await db
+          .update(contributors)
+          .set({
+            totalContributions: sql`CAST(${contributors.totalContributions} AS INTEGER) + 1`,
+          })
+          .where(eq(contributors.id, contributorId));
+      } else {
+        // Create new contributor
+        contributorId = `cont_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await db.insert(contributors).values({
+          id: contributorId,
+          userId: ctx.user.id,
+          name: ctx.user.name || "Anonymous Contributor",
+          level: "bronze",
+          totalContributions: "1",
+          reputation: "0",
+        });
+      }
+
+      // Insert the resource
+      await db.insert(resources).values({
+        id: resourceId,
+        title: input.title,
+        description: input.description,
+        category: input.category,
+        gradeLevel: input.gradeLevel,
+        resourceType: input.resourceType,
+        tags: input.tags || null,
+        fileUrl,
+        thumbnailUrl: null,
+        fileSize: input.fileSize || null,
+        mimeType: input.mimeType || null,
+        contributorId,
+        upvotes: "0",
+        downvotes: "0",
+        views: "0",
+        downloads: "0",
+        isPublished: "true",
+        isFeatured: "false",
+      });
+
+      return {
+        success: true,
+        resourceId,
+        message: "Resource created successfully",
+      };
+    }),
+
+  // Get file download URL
+  getDownloadUrl: publicProcedure
+    .input(z.object({ resourceId: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) {
+        return { url: null };
+      }
+
+      const resource = await db
+        .select({ fileUrl: resources.fileUrl })
+        .from(resources)
+        .where(eq(resources.id, input.resourceId))
+        .limit(1);
+
+      if (resource.length === 0 || !resource[0].fileUrl) {
+        return { url: null };
+      }
+
+      return { url: resource[0].fileUrl };
     }),
 });
 
