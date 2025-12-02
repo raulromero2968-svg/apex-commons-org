@@ -8,26 +8,45 @@ Apex Commons is a community-governed, open-source repository for educational res
 
 ---
 
+## Architecture & Tech Stack
+
+We utilize a **Type-Safe, Full-Stack** architecture designed for developer experience and rapid iteration.
+
+| Layer | Technology | Rationale |
+|-------|------------|-----------|
+| **Frontend** | React (Vite) | High-performance, client-side rendering with instant HMR. |
+| **Styling** | TailwindCSS | Utility-first styling with a custom "Cyber-Grid" theme. |
+| **API Layer** | tRPC | End-to-end type safety without schema definitions or code generation. |
+| **Backend** | Node.js (Express/Standalone) | Lightweight server hosting the tRPC router. |
+| **Database** | SQLite (via Drizzle ORM) | Portable, serverless-ready SQL database (File-based for local dev). |
+| **Validation** | Zod | Runtime schema validation for all inputs and environment variables. |
+
+---
+
 ## Key Features
 
 ### 1. The Discovery Engine (`/browse`)
 - **Search & Filter:** Real-time filtering by Category, Grade Level, and Resource Type.
 - **URL Sync:** All filters sync to the URL for easy sharing.
+- **Optimistic UI:** Skeleton loaders and instant feedback loops.
 - **Infinite Scroll:** Cursor-based pagination for seamless browsing.
 
 ### 2. The Contribution Pipeline (`/contribute`)
 - **Metadata Validation:** Strict Zod schemas ensure high-quality data entry.
 - **Hybrid Uploads:** Supports external links (Drive, YouTube) and file metadata.
+- **Teacher Verification:** Role-based access control restricts uploads to verified educators.
 - **Status Tracking:** Draft, Pending, Approved, Rejected states with moderation workflow.
 
 ### 3. The Moral Engine (Reputation System)
 - **Gamified Economy:** Users earn **Reputation Credits (RC)** for contributions and upvotes.
 - **Leveling Logic:** Automatic promotion (Bronze -> Silver -> Gold -> Platinum) based on RC thresholds.
 - **Transaction Ledger:** Complete history of all RC gains and losses.
+- **Incentive Alignment:** High-quality contributions are rewarded; spam is filtered.
 
 ### 4. Community Governance (`/governance`)
 - **Democratic Control:** Users spend RC to propose platform changes.
 - **Voting:** Weighted voting system to approve or reject proposals.
+- **Transparency:** Full history of passed and rejected measures.
 
 ### 5. Teacher Dashboard (`/dashboard`)
 - **Contribution Management:** View all your resources with status, views, and downloads.
@@ -40,14 +59,14 @@ Apex Commons is a community-governed, open-source repository for educational res
 
 ### Prerequisites
 - Node.js 18+
-- pnpm (recommended)
+- pnpm (recommended) or npm
 
 ### Installation
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-org/apex-commons-org.git
-   cd apex-commons-org
+   git clone https://github.com/your-org/apex-commons.git
+   cd apex-commons
    ```
 
 2. **Install dependencies:**
@@ -55,67 +74,41 @@ Apex Commons is a community-governed, open-source repository for educational res
    pnpm install
    ```
 
-3. **Set up environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your database connection string
-   ```
-
-4. **Initialize the Database:**
-   This creates the database schema using Drizzle ORM.
+3. **Initialize the Database:**
+   This creates the local SQLite file and pushes the schema.
    ```bash
    pnpm db:push
    ```
 
-5. **Start the Development Server:**
+4. **Start the Development Server:**
    ```bash
    pnpm dev
    ```
-
    The app will be available at `http://localhost:5173`.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | React 19, Vite, Tailwind CSS 4, shadcn/ui |
-| **State Management** | TanStack Query (React Query) |
-| **API Layer** | tRPC v11 (End-to-end type safety) |
-| **Database** | SQLite (dev) / PostgreSQL (prod) via Drizzle ORM |
-| **Validation** | Zod schemas |
-| **Authentication** | Session-based with cookies |
 
 ---
 
 ## Project Structure
 
 ```
-apex-commons-org/
-├── client/                  # Frontend React application
+├── client/                 # Frontend (Vite + React)
 │   ├── src/
-│   │   ├── components/      # Reusable UI components
-│   │   │   └── ui/          # shadcn/ui components
-│   │   ├── pages/           # Page components
-│   │   │   ├── Browse.tsx   # Resource discovery
-│   │   │   ├── Contribute.tsx # Resource submission
-│   │   │   ├── Dashboard.tsx  # Teacher dashboard
-│   │   │   └── ...
-│   │   ├── lib/             # Utilities (trpc client)
-│   │   └── hooks/           # Custom React hooks
-│   └── public/              # Static assets
-├── server/                  # Backend tRPC server
-│   ├── routers/             # Domain-specific routers
-│   │   ├── resourceRouter.ts
-│   │   ├── reputation.ts
-│   │   ├── governanceRouter.ts
-│   │   └── ...
-│   ├── _core/               # Core server infrastructure
-│   └── db.ts                # Database connection
-├── drizzle/                 # Database schema
-│   └── schema.ts
-└── shared/                  # Shared types & constants
+│   │   ├── components/     # Shared UI components (ResourceCard, VoteButton)
+│   │   ├── pages/          # Route views (Browse, Dashboard, Contribute)
+│   │   ├── lib/            # tRPC client and helpers
+│   │   └── hooks/          # Custom hooks (useDebounce, useAuth)
+│
+├── server/                 # Backend (tRPC)
+│   ├── routers/            # Logic Domains
+│   │   ├── resourceRouter.ts  # CRUD for Library Content
+│   │   ├── reputation.ts      # Gamification & History
+│   │   └── governanceRouter.ts # Proposals & Voting
+│   └── _core/              # Router initialization & Middleware
+│
+├── drizzle/                # Database Layer
+│   └── schema.ts           # Single Source of Truth for Data Models
+│
+└── drizzle.config.ts       # Migration configuration
 ```
 
 ---
@@ -173,6 +166,17 @@ apex-commons-org/
 
 ---
 
+## Governance & Roles
+
+The platform enforces the following Role-Based Access Control (RBAC):
+
+- **User:** Can view resources, vote (requires login), and earn RC.
+- **Teacher:** Can upload resources and access the Teacher Dashboard.
+- **Moderator:** Can approve/reject pending resources and flag content.
+- **Admin:** Full system access.
+
+---
+
 ## Scripts
 
 | Command | Description |
@@ -186,19 +190,18 @@ apex-commons-org/
 
 ---
 
-## Contributing
+## Future Roadmap
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+- [ ] **Blob Storage Integration:** Replace external link uploads with S3/Vercel Blob.
+- [ ] **Comments System:** Threaded discussions on Resource Detail pages.
+- [ ] **Federated Auth:** Connect Apex Commons identity with the main Apex Ecosystem.
+- [ ] **Mobile App:** React Native port for on-the-go learning.
 
 ---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
@@ -208,4 +211,4 @@ Apex Commons is part of the Apex Ecosystem, designed to balance "Public Good" wi
 
 ---
 
-Built with dedication for educators worldwide.
+*Built with dedication for educators worldwide.*

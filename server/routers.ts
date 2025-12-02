@@ -14,6 +14,7 @@ import {
   userRouter,
   moderationRouter,
   metricsRouter,
+  reputationRouter,
 } from "./routers/index";
 import { reputationRouter } from "./routers/reputation";
 

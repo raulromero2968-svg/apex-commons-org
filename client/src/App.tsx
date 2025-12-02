@@ -10,6 +10,7 @@ import Browse from "./pages/Browse";
 import Contribute from "./pages/Contribute";
 import Dashboard from "./pages/Dashboard";
 import ResourceDetail from "./pages/ResourceDetail";
+import { Dashboard } from "./pages/Dashboard";
 import Features from "./pages/Features";
 import Pricing from "./pages/Pricing";
 import Integrations from "./pages/Integrations";
