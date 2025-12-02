@@ -6,16 +6,23 @@ import { z } from "zod";
 import { waitlist } from "../drizzle/schema";
 import { getDb } from "./db";
 
-// Import the platform routers
-import { resourcesRouter } from "./resourcesRouter";
-import { reputationRouter } from "./routers/reputation";
-import { governanceRouter } from "./routers/governance";
+// Import domain routers
+import {
+  resourceRouter,
+  collectionRouter,
+  governanceRouter,
+  userRouter,
+  moderationRouter,
+  metricsRouter,
+} from "./routers/index";
 
 export const appRouter = router({
+  // System & health checks
   system: systemRouter,
 
+  // Authentication
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -25,13 +32,16 @@ export const appRouter = router({
     }),
   }),
 
+  // Waitlist
   waitlist: router({
     join: publicProcedure
-      .input(z.object({
-        name: z.string().min(1),
-        email: z.string().email(),
-        message: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          name: z.string().min(1),
+          email: z.string().email(),
+          message: z.string().optional(),
+        })
+      )
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
@@ -49,18 +59,13 @@ export const appRouter = router({
       }),
   }),
 
-  // ═══════════════════════════════════════════════════════════════════
-  // THE BACKEND TRIAD - Core Platform Logic
-  // ═══════════════════════════════════════════════════════════════════
-
-  // Content Core: Resource management and discovery
-  resources: resourcesRouter,
-
-  // Moral Engine: Reputation credits and gamification
-  reputation: reputationRouter,
-
-  // Community Brain: Democratic governance and proposals
+  // Domain routers
+  resource: resourceRouter,
+  collection: collectionRouter,
   governance: governanceRouter,
+  user: userRouter,
+  moderation: moderationRouter,
+  metrics: metricsRouter,
 });
 
 export type AppRouter = typeof appRouter;
