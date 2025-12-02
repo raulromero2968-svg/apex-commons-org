@@ -5,13 +5,14 @@ import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { waitlist } from "../drizzle/schema";
 import { getDb } from "./db";
+
+// Import the Backend Triad routers
 import { resourcesRouter } from "./routers/resources";
+import { reputationRouter } from "./routers/reputation";
+import { governanceRouter } from "./routers/governance";
 
 export const appRouter = router({
   system: systemRouter,
-
-  // Resources Router - Powers Discovery (/browse) and Consumption (/resource/:id)
-  resources: resourcesRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -47,6 +48,19 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // ═══════════════════════════════════════════════════════════════════
+  // THE BACKEND TRIAD - Core Platform Logic
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Content Core: Resource management and discovery
+  resources: resourcesRouter,
+
+  // Moral Engine: Reputation credits and gamification
+  reputation: reputationRouter,
+
+  // Community Brain: Democratic governance and proposals
+  governance: governanceRouter,
 });
 
 export type AppRouter = typeof appRouter;

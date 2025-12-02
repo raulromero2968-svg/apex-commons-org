@@ -258,6 +258,7 @@ export const resourcesRouter = router({
             amount: 5, // 5 RC for an upvote
             type: 'upvote_received',
             referenceId: input.resourceId,
+            description: `Received upvote on resource: ${resourceData[0].title}`,
           });
 
           // Update User Total
@@ -328,7 +329,20 @@ export const resourcesRouter = router({
         status: 'pending', // Always pending by default for moderation
       }).returning();
 
-      return result[0];
+      // Award RC for submission
+      await db.insert(rcTransactions).values({
+        userId: ctx.user.id,
+        amount: 10,
+        type: 'resource_submitted',
+        referenceId: result[0].id,
+        description: `Submitted resource: ${input.title}`,
+      });
+
+      await db.update(users)
+        .set({ reputationCredits: sql`${users.reputationCredits} + 10` })
+        .where(eq(users.id, ctx.user.id));
+
+      return { resource: result[0], rcEarned: 10 };
     }),
 
   /**

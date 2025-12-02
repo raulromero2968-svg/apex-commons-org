@@ -9,7 +9,10 @@ import { pgEnum, pgTable, text, timestamp, varchar, serial, integer, jsonb } fro
 export const roleEnum = pgEnum("role", ["user", "admin", "teacher"]);
 export const contributorLevelEnum = pgEnum("contributor_level", ["bronze", "silver", "gold", "platinum"]);
 export const resourceStatusEnum = pgEnum("resource_status", ["pending", "approved", "rejected"]);
-export const rcTransactionTypeEnum = pgEnum("rc_transaction_type", ["upvote_received", "resource_approved", "daily_login", "level_up_bonus"]);
+export const rcTransactionTypeEnum = pgEnum("rc_transaction_type", [
+  "upvote_received", "resource_approved", "resource_submitted",
+  "proposal_created", "vote_cast", "admin_adjustment", "daily_login", "level_up_bonus", "bonus"
+]);
 
 export const users = pgTable("users", {
   id: varchar("id", { length: 64 }).primaryKey(),
@@ -38,7 +41,7 @@ export const waitlist = pgTable("waitlist", {
 export type Waitlist = typeof waitlist.$inferSelect;
 export type InsertWaitlist = typeof waitlist.$inferInsert;
 
-// Educational Resources
+// Educational Resources - The Content Core
 export const resources = pgTable("resources", {
   id: serial("id").primaryKey(),
   contributorId: varchar("contributorId", { length: 64 }).notNull().references(() => users.id),
@@ -79,9 +82,44 @@ export const rcTransactions = pgTable("rc_transactions", {
   amount: integer("amount").notNull(),
   type: rcTransactionTypeEnum("type").notNull(),
   referenceId: integer("referenceId"), // Points to resourceId or other entity
+  description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type RcTransaction = typeof rcTransactions.$inferSelect;
 export type InsertRcTransaction = typeof rcTransactions.$inferInsert;
 
+// Proposal status enum
+export const proposalStatusEnum = pgEnum("proposal_status", ["active", "passed", "rejected", "expired"]);
+
+// Proposals - The Community Brain
+export const proposals = pgTable("proposals", {
+  id: serial("id").primaryKey(),
+  authorId: varchar("authorId", { length: 64 }).notNull().references(() => users.id),
+  title: varchar("title", { length: 100 }).notNull(),
+  content: text("content").notNull(),
+  status: proposalStatusEnum("status").default("active").notNull(),
+  yesVotes: integer("yesVotes").default(0).notNull(),
+  noVotes: integer("noVotes").default(0).notNull(),
+  abstainVotes: integer("abstainVotes").default(0).notNull(),
+  startDate: timestamp("startDate").defaultNow(),
+  endDate: timestamp("endDate").notNull(),
+});
+
+export type Proposal = typeof proposals.$inferSelect;
+export type InsertProposal = typeof proposals.$inferInsert;
+
+// Vote type enum
+export const voteTypeEnum = pgEnum("vote_type", ["yes", "no", "abstain"]);
+
+// Proposal Votes - Democratic Participation Record
+export const proposalVotes = pgTable("proposal_votes", {
+  id: serial("id").primaryKey(),
+  proposalId: integer("proposalId").notNull().references(() => proposals.id),
+  userId: varchar("userId", { length: 64 }).notNull().references(() => users.id),
+  vote: voteTypeEnum("vote").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProposalVote = typeof proposalVotes.$inferSelect;
+export type InsertProposalVote = typeof proposalVotes.$inferInsert;
