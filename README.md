@@ -29,21 +29,29 @@ We utilize a **Type-Safe, Full-Stack** architecture designed for developer exper
 - **Search & Filter:** Real-time filtering by Category, Grade Level, and Resource Type.
 - **URL Sync:** All filters sync to the URL for easy sharing.
 - **Optimistic UI:** Skeleton loaders and instant feedback loops.
+- **Infinite Scroll:** Cursor-based pagination for seamless browsing.
 
 ### 2. The Contribution Pipeline (`/contribute`)
 - **Metadata Validation:** Strict Zod schemas ensure high-quality data entry.
 - **Hybrid Uploads:** Supports external links (Drive, YouTube) and file metadata.
 - **Teacher Verification:** Role-based access control restricts uploads to verified educators.
+- **Status Tracking:** Draft, Pending, Approved, Rejected states with moderation workflow.
 
 ### 3. The Moral Engine (Reputation System)
 - **Gamified Economy:** Users earn **Reputation Credits (RC)** for contributions and upvotes.
-- **Leveling Logic:** Automatic promotion (Bronze → Silver → Gold) based on RC thresholds.
+- **Leveling Logic:** Automatic promotion (Bronze -> Silver -> Gold -> Platinum) based on RC thresholds.
+- **Transaction Ledger:** Complete history of all RC gains and losses.
 - **Incentive Alignment:** High-quality contributions are rewarded; spam is filtered.
 
 ### 4. Community Governance (`/governance`)
 - **Democratic Control:** Users spend RC to propose platform changes.
 - **Voting:** Weighted voting system to approve or reject proposals.
 - **Transparency:** Full history of passed and rejected measures.
+
+### 5. Teacher Dashboard (`/dashboard`)
+- **Contribution Management:** View all your resources with status, views, and downloads.
+- **Reputation Tracking:** Monitor your RC balance and progress to the next level.
+- **Activity Feed:** Recent reputation transactions and milestones.
 
 ---
 
@@ -87,22 +95,74 @@ We utilize a **Type-Safe, Full-Stack** architecture designed for developer exper
 │   ├── src/
 │   │   ├── components/     # Shared UI components (ResourceCard, VoteButton)
 │   │   ├── pages/          # Route views (Browse, Dashboard, Contribute)
-│   │   ├── utils/          # tRPC client and helpers
-│   │   └── hooks/          # Custom hooks (useDebounce)
+│   │   ├── lib/            # tRPC client and helpers
+│   │   └── hooks/          # Custom hooks (useDebounce, useAuth)
 │
 ├── server/                 # Backend (tRPC)
 │   ├── routers/            # Logic Domains
-│   │   ├── resources.ts    # CRUD for Library Content
-│   │   ├── reputation.ts   # Gamification & History
-│   │   └── governance.ts   # Proposals & Voting
-│   └── trpc.ts             # Router initialization & Middleware
+│   │   ├── resourceRouter.ts  # CRUD for Library Content
+│   │   ├── reputation.ts      # Gamification & History
+│   │   └── governanceRouter.ts # Proposals & Voting
+│   └── _core/              # Router initialization & Middleware
 │
 ├── drizzle/                # Database Layer
-│   ├── schema.ts           # Single Source of Truth for Data Models
-│   └── db.ts               # Connection setup
+│   └── schema.ts           # Single Source of Truth for Data Models
 │
 └── drizzle.config.ts       # Migration configuration
 ```
+
+---
+
+## API Reference
+
+### Resources Router (`resource.*`)
+
+| Procedure | Type | Description |
+|-----------|------|-------------|
+| `browse` | Query | Paginated resource listing with filters |
+| `getById` | Query | Get single resource by ID |
+| `create` | Mutation | Create new resource (teacher+) |
+| `getMyResources` | Query | Get all resources by logged-in user |
+| `vote` | Mutation | Upvote/downvote a resource |
+| `trackDownload` | Mutation | Track resource download |
+
+### Reputation Router (`reputation.*`)
+
+| Procedure | Type | Description |
+|-----------|------|-------------|
+| `getHistory` | Query | User's RC transaction history |
+| `getMyStats` | Query | User's reputation stats & level |
+| `getLeaderboard` | Query | Top contributors |
+| `syncLevel` | Mutation | Update user level based on RC |
+
+### Governance Router (`governance.*`)
+
+| Procedure | Type | Description |
+|-----------|------|-------------|
+| `listProposals` | Query | Active governance proposals |
+| `createProposal` | Mutation | Submit new proposal |
+| `vote` | Mutation | Vote on a proposal |
+
+---
+
+## Reputation Credits (RC) Economy
+
+| Action | RC Awarded |
+|--------|------------|
+| Resource Submitted | +10 RC |
+| Resource Approved | +50 RC |
+| Upvote Received | +5 RC |
+| Downvote Received | -2 RC |
+| Resource Downloaded | +1 RC |
+
+### Level Thresholds
+
+| Level | RC Required |
+|-------|-------------|
+| Bronze | 0 |
+| Silver | 1,000 |
+| Gold | 5,000 |
+| Platinum | 10,000 |
 
 ---
 
@@ -114,6 +174,19 @@ The platform enforces the following Role-Based Access Control (RBAC):
 - **Teacher:** Can upload resources and access the Teacher Dashboard.
 - **Moderator:** Can approve/reject pending resources and flag content.
 - **Admin:** Full system access.
+
+---
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start development server |
+| `pnpm build` | Build for production |
+| `pnpm start` | Run production server |
+| `pnpm check` | TypeScript type checking |
+| `pnpm db:push` | Push schema to database |
+| `pnpm test` | Run tests |
 
 ---
 
@@ -132,4 +205,10 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
-*Built with precision by Apex Systems Architecture.*
+## Acknowledgments
+
+Apex Commons is part of the Apex Ecosystem, designed to balance "Public Good" with "Private Profit" - democratizing access to knowledge while building sustainable technology.
+
+---
+
+*Built with dedication for educators worldwide.*

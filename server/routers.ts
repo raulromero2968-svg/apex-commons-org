@@ -16,6 +16,7 @@ import {
   metricsRouter,
   reputationRouter,
 } from "./routers/index";
+import { reputationRouter } from "./routers/reputation";
 
 export const appRouter = router({
   // System & health checks

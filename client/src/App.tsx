@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Browse from "./pages/Browse";
 import Contribute from "./pages/Contribute";
+import Dashboard from "./pages/Dashboard";
 import ResourceDetail from "./pages/ResourceDetail";
 import { Dashboard } from "./pages/Dashboard";
 import Features from "./pages/Features";
