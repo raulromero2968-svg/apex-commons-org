@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import Browse from "./pages/Browse";
 import Contribute from "./pages/Contribute";
 import ResourceDetail from "./pages/ResourceDetail";
+import { Dashboard } from "./pages/Dashboard";
 import Features from "./pages/Features";
 import Pricing from "./pages/Pricing";
 import Integrations from "./pages/Integrations";
@@ -17,7 +18,6 @@ import Blog from "./pages/Blog";
 import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
-import ResourceDetail from "./pages/ResourceDetail";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -26,6 +26,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/browse"} component={Browse} />
       <Route path={"/contribute"} component={Contribute} />
+      <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/resource/:id"} component={ResourceDetail} />
       <Route path={"/features"} component={Features} />
       <Route path={"/pricing"} component={Pricing} />
@@ -35,7 +36,6 @@ function Router() {
       <Route path={"/contact"} component={Contact} />
       <Route path={"/privacy"} component={Privacy} />
       <Route path={"/terms"} component={Terms} />
-      <Route path={"/resource/:id"} component={ResourceDetail} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
