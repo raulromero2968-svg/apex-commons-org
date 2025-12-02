@@ -771,4 +771,35 @@ export const resourceRouter = router({
 
     return picks;
   }),
+
+  /**
+   * GET MY RESOURCES (Protected)
+   * Fetches all resources uploaded by the logged-in user, regardless of status.
+   * Required for the Dashboard to show pending/rejected items.
+   */
+  getMyResources: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    return await db
+      .select({
+        id: resources.id,
+        title: resources.title,
+        summary: resources.summary,
+        category: resources.category,
+        resourceType: resources.resourceType,
+        subject: resources.subject,
+        gradeLevel: resources.gradeLevel,
+        status: resources.status,
+        viewCount: resources.viewCount,
+        downloadCount: resources.downloadCount,
+        upvoteCount: resources.upvoteCount,
+        downvoteCount: resources.downvoteCount,
+        netVotes: resources.netVotes,
+        createdAt: resources.createdAt,
+      })
+      .from(resources)
+      .where(eq(resources.contributorId, ctx.user.id))
+      .orderBy(desc(resources.createdAt));
+  }),
 });

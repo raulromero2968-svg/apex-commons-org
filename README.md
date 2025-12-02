@@ -1,188 +1,211 @@
-# Apex Commons Landing Page
+# Apex Commons: The Public Knowledge Library
 
-A premium, production-ready landing page for Apex Commons - an AI-powered automation platform for freelancers and agencies.
+![Status](https://img.shields.io/badge/Status-Alpha-cyan) ![License](https://img.shields.io/badge/License-MIT-blue) ![Stack](https://img.shields.io/badge/Stack-Vite_tRPC_Drizzle-purple)
 
-## 🎨 Design Features
+> **"Open Knowledge for the AGI Era"**
 
-- **Dark Theme**: Deep black (#0A0A0A) backgrounds with electric cyan (#00B4D8) and vibrant cyan (#00F5FF) accents
-- **Premium Aesthetics**: Inspired by Nintendo, Studio Ghibli, and Corsair design principles
-- **Smooth Animations**: Scroll-triggered animations with fade-in effects
-- **Responsive Design**: Mobile-first approach with perfect responsiveness across all devices
-- **High Performance**: Optimized for sub-2-second load times
-
-## 🚀 Tech Stack
-
-- **React 19** - Latest React with modern hooks
-- **Tailwind CSS 4** - Utility-first CSS framework
-- **shadcn/ui** - High-quality, accessible component library
-- **Vite** - Lightning-fast build tool
-- **TypeScript** - Type-safe development
-
-## 📁 Project Structure
-
-```
-client/
-├── public/              # Static assets
-│   ├── command_center_refined_v2.png
-│   ├── blog_scale_refined.png
-│   └── feature_ai_insights.png
-├── src/
-│   ├── components/      # Reusable components
-│   │   ├── ui/         # shadcn/ui components
-│   │   └── AnimatedSection.tsx
-│   ├── pages/          # Page components
-│   │   ├── Home.tsx    # Main landing page
-│   │   └── NotFound.tsx
-│   ├── App.tsx         # Root component with routing
-│   ├── main.tsx        # Entry point
-│   └── index.css       # Global styles & theme
-```
-
-## 🎯 Key Sections
-
-### Hero Section
-- Compelling headline with gradient text
-- Command center dashboard mockup
-- Clear CTAs (Start Free Trial, See How It Works)
-- Trust indicators (No credit card, 5 automations free)
-
-### Features Section
-- **Automate Client Work** - Connect apps and let AI handle busywork
-- **Scale Up, Stress Down** - Handle more clients without hiring
-- **AI Insights** - Get actionable insights from your data
-
-### Pricing Section
-- **Free Tier**: $0/month - 5 automations, basic dashboard, email support
-- **Pro Tier**: $50/month - Unlimited automations, AI insights, priority support
-- **Agency Tier**: $200/month - White-label, team collaboration, API access
-
-### CTA Section
-- Email capture form
-- Clear value proposition
-- No friction signup
-
-## 🛠️ Development
-
-### Prerequisites
-- Node.js 22.x
-- pnpm (recommended) or npm
-
-### Getting Started
-
-```bash
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Preview production build
-pnpm preview
-```
-
-### Development Server
-The dev server runs on `http://localhost:3000` with hot module replacement (HMR) enabled.
-
-## 🎨 Customization
-
-### Colors
-Edit `client/src/index.css` to customize the color palette:
-
-```css
-.dark {
-  --primary: oklch(0.65 0.19 215);      /* Electric cyan/blue */
-  --accent: oklch(0.75 0.20 200);       /* Vibrant cyan */
-  --secondary: oklch(0.45 0.15 295);    /* Subtle purple */
-  --background: oklch(0.08 0 0);        /* Deep black */
-}
-```
-
-### Content
-Edit `client/src/pages/Home.tsx` to update:
-- Headlines and copy
-- Feature descriptions
-- Pricing tiers
-- CTA text
-
-### Images
-Replace images in `client/public/` with your own assets. Current images:
-- `command_center_refined_v2.png` - Dashboard mockup
-- `blog_scale_refined.png` - Growth/scaling visual
-- `feature_ai_insights.png` - AI insights visual
-
-## 📊 SEO Optimization
-
-The landing page includes comprehensive SEO meta tags:
-- Title and description
-- Open Graph tags for social sharing
-- Twitter Card tags
-- Keywords for search engines
-
-## 🚢 Deployment
-
-### Option 1: Manus Platform (Recommended)
-1. Click the "Publish" button in the Manus UI
-2. Configure deployment settings
-3. Deploy with one click
-
-### Option 2: Vercel
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-```
-
-### Option 3: Netlify
-```bash
-# Build the project
-pnpm build
-
-# Deploy the client/dist folder to Netlify
-```
-
-## 📈 Performance Targets
-
-- ✅ Sub-2-second load time
-- ✅ Mobile-first responsive design
-- ✅ Smooth scroll animations
-- ✅ Optimized images
-- ✅ Clean, semantic HTML
-
-## 🎯 Conversion Optimization
-
-- Clear value proposition above the fold
-- Multiple CTAs throughout the page
-- Trust indicators (no credit card, free tier)
-- Social proof ready (add testimonials)
-- Friction-free email capture
-
-## 📝 Next Steps
-
-1. **Add Analytics**: Analytics are pre-configured via Umami (check index.html)
-2. **Connect Email Service**: Wire up the email form to your backend/service
-3. **Add Testimonials**: Include social proof in the features section
-4. **A/B Testing**: Test different headlines and CTAs
-5. **Blog Integration**: Link to your Substack or blog
-
-## 🤝 Brand Guidelines
-
-**Apex Commons Brand Identity:**
-- Premium, clean, sophisticated
-- High-contrast dark theme
-- Wolf branding (geometric, modern)
-- Electric cyan/blue primary colors
-- Inspired by Nintendo, Studio Ghibli, Corsair
-
-## 📄 License
-
-© 2025 Apex Commons. All rights reserved.
+Apex Commons is a community-governed, open-source repository for educational resources. It serves as the "public good" pillar of the Apex Ecosystem, designed to democratize access to knowledge through a gamified, reputation-based economy.
 
 ---
 
-Built with ❤️ using React, Tailwind CSS, and shadcn/ui
+## Key Features
 
+### 1. The Discovery Engine (`/browse`)
+- **Search & Filter:** Real-time filtering by Category, Grade Level, and Resource Type.
+- **URL Sync:** All filters sync to the URL for easy sharing.
+- **Infinite Scroll:** Cursor-based pagination for seamless browsing.
+
+### 2. The Contribution Pipeline (`/contribute`)
+- **Metadata Validation:** Strict Zod schemas ensure high-quality data entry.
+- **Hybrid Uploads:** Supports external links (Drive, YouTube) and file metadata.
+- **Status Tracking:** Draft, Pending, Approved, Rejected states with moderation workflow.
+
+### 3. The Moral Engine (Reputation System)
+- **Gamified Economy:** Users earn **Reputation Credits (RC)** for contributions and upvotes.
+- **Leveling Logic:** Automatic promotion (Bronze -> Silver -> Gold -> Platinum) based on RC thresholds.
+- **Transaction Ledger:** Complete history of all RC gains and losses.
+
+### 4. Community Governance (`/governance`)
+- **Democratic Control:** Users spend RC to propose platform changes.
+- **Voting:** Weighted voting system to approve or reject proposals.
+
+### 5. Teacher Dashboard (`/dashboard`)
+- **Contribution Management:** View all your resources with status, views, and downloads.
+- **Reputation Tracking:** Monitor your RC balance and progress to the next level.
+- **Activity Feed:** Recent reputation transactions and milestones.
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- pnpm (recommended)
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-org/apex-commons-org.git
+   cd apex-commons-org
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   pnpm install
+   ```
+
+3. **Set up environment variables:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your database connection string
+   ```
+
+4. **Initialize the Database:**
+   This creates the database schema using Drizzle ORM.
+   ```bash
+   pnpm db:push
+   ```
+
+5. **Start the Development Server:**
+   ```bash
+   pnpm dev
+   ```
+
+   The app will be available at `http://localhost:5173`.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 19, Vite, Tailwind CSS 4, shadcn/ui |
+| **State Management** | TanStack Query (React Query) |
+| **API Layer** | tRPC v11 (End-to-end type safety) |
+| **Database** | SQLite (dev) / PostgreSQL (prod) via Drizzle ORM |
+| **Validation** | Zod schemas |
+| **Authentication** | Session-based with cookies |
+
+---
+
+## Project Structure
+
+```
+apex-commons-org/
+├── client/                  # Frontend React application
+│   ├── src/
+│   │   ├── components/      # Reusable UI components
+│   │   │   └── ui/          # shadcn/ui components
+│   │   ├── pages/           # Page components
+│   │   │   ├── Browse.tsx   # Resource discovery
+│   │   │   ├── Contribute.tsx # Resource submission
+│   │   │   ├── Dashboard.tsx  # Teacher dashboard
+│   │   │   └── ...
+│   │   ├── lib/             # Utilities (trpc client)
+│   │   └── hooks/           # Custom React hooks
+│   └── public/              # Static assets
+├── server/                  # Backend tRPC server
+│   ├── routers/             # Domain-specific routers
+│   │   ├── resourceRouter.ts
+│   │   ├── reputation.ts
+│   │   ├── governanceRouter.ts
+│   │   └── ...
+│   ├── _core/               # Core server infrastructure
+│   └── db.ts                # Database connection
+├── drizzle/                 # Database schema
+│   └── schema.ts
+└── shared/                  # Shared types & constants
+```
+
+---
+
+## API Reference
+
+### Resources Router (`resource.*`)
+
+| Procedure | Type | Description |
+|-----------|------|-------------|
+| `browse` | Query | Paginated resource listing with filters |
+| `getById` | Query | Get single resource by ID |
+| `create` | Mutation | Create new resource (teacher+) |
+| `getMyResources` | Query | Get all resources by logged-in user |
+| `vote` | Mutation | Upvote/downvote a resource |
+| `trackDownload` | Mutation | Track resource download |
+
+### Reputation Router (`reputation.*`)
+
+| Procedure | Type | Description |
+|-----------|------|-------------|
+| `getHistory` | Query | User's RC transaction history |
+| `getMyStats` | Query | User's reputation stats & level |
+| `getLeaderboard` | Query | Top contributors |
+| `syncLevel` | Mutation | Update user level based on RC |
+
+### Governance Router (`governance.*`)
+
+| Procedure | Type | Description |
+|-----------|------|-------------|
+| `listProposals` | Query | Active governance proposals |
+| `createProposal` | Mutation | Submit new proposal |
+| `vote` | Mutation | Vote on a proposal |
+
+---
+
+## Reputation Credits (RC) Economy
+
+| Action | RC Awarded |
+|--------|------------|
+| Resource Submitted | +10 RC |
+| Resource Approved | +50 RC |
+| Upvote Received | +5 RC |
+| Downvote Received | -2 RC |
+| Resource Downloaded | +1 RC |
+
+### Level Thresholds
+
+| Level | RC Required |
+|-------|-------------|
+| Bronze | 0 |
+| Silver | 1,000 |
+| Gold | 5,000 |
+| Platinum | 10,000 |
+
+---
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start development server |
+| `pnpm build` | Build for production |
+| `pnpm start` | Run production server |
+| `pnpm check` | TypeScript type checking |
+| `pnpm db:push` | Push schema to database |
+| `pnpm test` | Run tests |
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## Acknowledgments
+
+Apex Commons is part of the Apex Ecosystem, designed to balance "Public Good" with "Private Profit" - democratizing access to knowledge while building sustainable technology.
+
+---
+
+Built with dedication for educators worldwide.
