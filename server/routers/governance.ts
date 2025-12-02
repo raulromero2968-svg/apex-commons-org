@@ -148,7 +148,7 @@ export const governanceRouter = router({
 
       // Update transaction with reference ID
       await db.update(rcTransactions)
-        .set({ referenceId: String(result[0].id) })
+        .set({ referenceId: result[0].id })
         .where(and(
           eq(rcTransactions.userId, user.id),
           eq(rcTransactions.type, 'proposal_created'),
@@ -235,7 +235,7 @@ export const governanceRouter = router({
         userId: user.id,
         amount: 0,
         type: 'vote_cast',
-        referenceId: String(input.proposalId),
+        referenceId: input.proposalId,
         description: `Voted "${input.vote}" on proposal: ${proposal[0].title}`,
       });
 

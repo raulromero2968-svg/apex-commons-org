@@ -1,281 +1,388 @@
 import { z } from 'zod';
-import { router, protectedProcedure, publicProcedure } from '../_core/trpc';
-import { resources, resourceVotes, users, rcTransactions } from '../../drizzle/schema';
-import { eq, desc, and, sql, asc } from 'drizzle-orm';
+import { router, publicProcedure, protectedProcedure } from '../_core/trpc';
+import { resources, users, resourceVotes, rcTransactions } from '../../drizzle/schema';
+import { eq, desc, and, like, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { getDb } from '../db';
-
-// RC rewards for resource actions
-const RC_REWARDS = {
-  SUBMIT: 10,
-  APPROVED: 50,
-  UPVOTE_RECEIVED: 5,
-};
 
 export const resourcesRouter = router({
   /**
    * GET ALL RESOURCES (Public)
-   * Browse approved resources with filtering and sorting.
+   * Powers the main /browse grid.
+   * Includes search, filtering by category/grade, and sorting.
    */
   getAll: publicProcedure
-    .input(z.object({
-      category: z.enum(['tutorial', 'tool', 'library', 'article', 'video', 'course', 'template', 'other', 'all']).default('all'),
-      sortBy: z.enum(['newest', 'popular', 'title']).default('newest'),
-      limit: z.number().min(1).max(50).default(20),
-      offset: z.number().min(0).default(0),
-    }))
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(20),
+        cursor: z.number().nullish(), // For infinite scrolling
+        search: z.string().optional(),
+        category: z.string().optional(),
+        gradeLevel: z.string().optional(),
+        sortBy: z.enum(['newest', 'popular', 'highest_rated']).default('newest'),
+      })
+    )
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      if (!db) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      }
 
-      // Determine sort order
-      const orderByClause = input.sortBy === 'newest'
-        ? desc(resources.createdAt)
-        : input.sortBy === 'popular'
-          ? desc(resources.upvotes)
-          : asc(resources.title);
+      // Dynamic Where Clause Construction
+      const whereConditions = [];
 
-      return await db.select({
+      // Only show approved resources
+      whereConditions.push(eq(resources.status, 'approved'));
+
+      if (input.search) {
+        // PostgreSQL ILIKE for case-insensitive search
+        whereConditions.push(like(resources.title, `%${input.search}%`));
+      }
+      if (input.category && input.category !== 'All') {
+        whereConditions.push(eq(resources.category, input.category));
+      }
+      if (input.gradeLevel && input.gradeLevel !== 'All') {
+        whereConditions.push(eq(resources.gradeLevel, input.gradeLevel));
+      }
+
+      // Cursor-based pagination
+      if (input.cursor) {
+        whereConditions.push(sql`${resources.id} < ${input.cursor}`);
+      }
+
+      // Dynamic Sorting
+      let orderBy;
+      switch (input.sortBy) {
+        case 'popular':
+          orderBy = desc(resources.views);
+          break;
+        case 'highest_rated':
+          orderBy = desc(resources.upvotes); // Simplified; ideally uses a weighted score
+          break;
+        case 'newest':
+        default:
+          orderBy = desc(resources.createdAt);
+      }
+
+      const items = await db.select({
         id: resources.id,
         title: resources.title,
         description: resources.description,
-        url: resources.url,
         category: resources.category,
-        tags: resources.tags,
+        gradeLevel: resources.gradeLevel,
+        resourceType: resources.resourceType,
+        thumbnailUrl: resources.thumbnailUrl,
         upvotes: resources.upvotes,
         downvotes: resources.downvotes,
+        views: resources.views,
         createdAt: resources.createdAt,
-        submitterName: users.name,
+        contributor: {
+          id: users.id,
+          name: users.name,
+          level: users.contributorLevel,
+        }
       })
         .from(resources)
-        .leftJoin(users, eq(resources.submitterId, users.id))
-        .where(eq(resources.status, 'approved'))
-        .orderBy(orderByClause)
-        .limit(input.limit)
-        .offset(input.offset);
+        .leftJoin(users, eq(resources.contributorId, users.id))
+        .where(and(...whereConditions))
+        .limit(input.limit + 1) // Fetch one extra to determine if there's a next page
+        .orderBy(orderBy);
+
+      let nextCursor: typeof input.cursor | undefined = undefined;
+      if (items.length > input.limit) {
+        const nextItem = items.pop();
+        nextCursor = nextItem!.id;
+      }
+
+      return {
+        items,
+        nextCursor,
+      };
     }),
 
   /**
    * GET SINGLE RESOURCE (Public)
+   * Fetches full details + increments view count side-effect.
    */
   getById: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      if (!db) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      }
 
-      const result = await db.select({
-        id: resources.id,
-        title: resources.title,
-        description: resources.description,
-        url: resources.url,
-        category: resources.category,
-        tags: resources.tags,
-        upvotes: resources.upvotes,
-        downvotes: resources.downvotes,
-        status: resources.status,
-        createdAt: resources.createdAt,
-        approvedAt: resources.approvedAt,
-        submitterName: users.name,
-        submitterId: resources.submitterId,
-      })
-        .from(resources)
-        .leftJoin(users, eq(resources.submitterId, users.id))
-        .where(eq(resources.id, input.id))
-        .limit(1);
+      const resource = await db.query.resources.findFirst({
+        where: eq(resources.id, input.id),
+        with: {
+          contributor: true,
+        }
+      });
 
-      if (result.length === 0) {
+      if (!resource) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Resource not found' });
       }
 
-      return result[0];
+      // Side Effect: Increment View Count (Fire and Forget)
+      // In a high-scale environment, this would go to a Redis queue.
+      db.update(resources)
+        .set({ views: sql`${resources.views} + 1` })
+        .where(eq(resources.id, input.id))
+        .execute()
+        .catch(err => console.error('[Resources] Failed to increment view count:', err));
+
+      return resource;
     }),
 
   /**
-   * SUBMIT RESOURCE (Protected)
-   * Users earn RC for submissions. Resources start as pending.
+   * GET USER'S VOTE STATUS (Protected)
+   * Returns the user's current vote on a resource for UI state
    */
-  submit: protectedProcedure
-    .input(z.object({
-      title: z.string().min(5).max(200),
-      description: z.string().min(20).max(2000),
-      url: z.string().url().max(2048),
-      category: z.enum(['tutorial', 'tool', 'library', 'article', 'video', 'course', 'template', 'other']),
-      tags: z.array(z.string().max(30)).max(5).optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
+  getUserVote: protectedProcedure
+    .input(z.object({ resourceId: z.number() }))
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      if (!db) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      }
 
-      const user = ctx.user;
+      const vote = await db.select()
+        .from(resourceVotes)
+        .where(and(
+          eq(resourceVotes.userId, ctx.user.id),
+          eq(resourceVotes.resourceId, input.resourceId)
+        ))
+        .limit(1);
 
-      // Insert the resource
-      const result = await db.insert(resources).values({
-        title: input.title,
-        description: input.description,
-        url: input.url,
-        category: input.category,
-        tags: input.tags ? JSON.stringify(input.tags) : null,
-        submitterId: user.id,
-        status: 'pending',
-      }).returning();
-
-      // Award RC for submission
-      await db.update(users)
-        .set({ reputationCredits: sql`${users.reputationCredits} + ${RC_REWARDS.SUBMIT}` })
-        .where(eq(users.id, user.id));
-
-      await db.insert(rcTransactions).values({
-        userId: user.id,
-        amount: RC_REWARDS.SUBMIT,
-        type: 'resource_submitted',
-        referenceId: String(result[0].id),
-        description: `Submitted resource: ${input.title}`,
-      });
-
-      return { resource: result[0], rcEarned: RC_REWARDS.SUBMIT };
+      return vote.length > 0 ? { voteType: vote[0].voteType } : null;
     }),
 
   /**
    * VOTE ON RESOURCE (Protected)
-   * Upvote or downvote a resource. Changes are tracked.
+   * Handles the logic for Upvoting/Downvoting and preventing duplicates.
+   * Also triggers the Reputation Engine (Transaction).
+   * Returns updated state immediately for Optimistic UI.
    */
   vote: protectedProcedure
     .input(z.object({
       resourceId: z.number(),
-      vote: z.enum(['up', 'down']),
+      voteType: z.enum(['up', 'down']),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      if (!db) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      }
 
-      const user = ctx.user;
-      const voteValue = input.vote === 'up' ? 1 : -1;
+      const voteVal = input.voteType === 'up' ? 1 : -1;
 
-      // Check existing vote
-      const existing = await db.select()
+      // 1. Check if user already voted
+      const existingVotes = await db.select()
         .from(resourceVotes)
         .where(and(
-          eq(resourceVotes.resourceId, input.resourceId),
-          eq(resourceVotes.userId, user.id)
+          eq(resourceVotes.userId, ctx.user.id),
+          eq(resourceVotes.resourceId, input.resourceId)
         ))
         .limit(1);
 
-      if (existing.length > 0) {
-        const existingVote = existing[0];
+      const existingVote = existingVotes[0];
 
-        if (existingVote.vote === voteValue) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'You have already cast this vote' });
-        }
+      if (existingVote) {
+        if (existingVote.voteType === voteVal) {
+          // Toggle off (remove vote)
+          await db.delete(resourceVotes)
+            .where(and(
+              eq(resourceVotes.userId, ctx.user.id),
+              eq(resourceVotes.resourceId, input.resourceId)
+            ));
 
-        // Change vote - update counts accordingly
-        await db.update(resourceVotes)
-          .set({ vote: voteValue })
-          .where(eq(resourceVotes.id, existingVote.id));
-
-        // Adjust both counters
-        if (voteValue === 1) {
+          // Revert resource count
           await db.update(resources)
             .set({
-              upvotes: sql`${resources.upvotes} + 1`,
-              downvotes: sql`${resources.downvotes} - 1`,
+              upvotes: input.voteType === 'up' ? sql`${resources.upvotes} - 1` : resources.upvotes,
+              downvotes: input.voteType === 'down' ? sql`${resources.downvotes} - 1` : resources.downvotes
             })
             .where(eq(resources.id, input.resourceId));
-        } else {
-          await db.update(resources)
-            .set({
-              upvotes: sql`${resources.upvotes} - 1`,
-              downvotes: sql`${resources.downvotes} + 1`,
-            })
-            .where(eq(resources.id, input.resourceId));
+
+          // Get updated counts for optimistic UI
+          const updated = await db.select({
+            upvotes: resources.upvotes,
+            downvotes: resources.downvotes
+          })
+            .from(resources)
+            .where(eq(resources.id, input.resourceId))
+            .limit(1);
+
+          return {
+            status: 'removed' as const,
+            upvotes: updated[0]?.upvotes ?? 0,
+            downvotes: updated[0]?.downvotes ?? 0,
+            userVote: null
+          };
         }
 
-        return { changed: true, newVote: input.vote };
+        // Changing vote (up to down or vice versa)
+        // For MVP/Equilibrium, block this scenario
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'You have already voted on this resource. Remove your vote first to change it.'
+        });
       }
 
-      // New vote
+      // 2. Insert new vote
       await db.insert(resourceVotes).values({
+        userId: ctx.user.id,
         resourceId: input.resourceId,
-        userId: user.id,
-        vote: voteValue,
+        voteType: voteVal,
       });
 
-      // Update resource counts
-      if (voteValue === 1) {
-        await db.update(resources)
-          .set({ upvotes: sql`${resources.upvotes} + 1` })
-          .where(eq(resources.id, input.resourceId));
+      // 3. Update Resource Counts
+      await db.update(resources)
+        .set({
+          upvotes: input.voteType === 'up' ? sql`${resources.upvotes} + 1` : resources.upvotes,
+          downvotes: input.voteType === 'down' ? sql`${resources.downvotes} + 1` : resources.downvotes
+        })
+        .where(eq(resources.id, input.resourceId));
 
-        // Award RC to resource submitter for upvote
-        const resource = await db.select({ submitterId: resources.submitterId, title: resources.title })
+      // 4. REPUTATION TRANSACTION (The "Moral Engine")
+      // Only award RC for Upvotes
+      if (input.voteType === 'up') {
+        const resourceData = await db.select()
           .from(resources)
           .where(eq(resources.id, input.resourceId))
           .limit(1);
 
-        if (resource.length > 0 && resource[0].submitterId !== user.id) {
-          await db.update(users)
-            .set({ reputationCredits: sql`${users.reputationCredits} + ${RC_REWARDS.UPVOTE_RECEIVED}` })
-            .where(eq(users.id, resource[0].submitterId));
-
+        if (resourceData[0]) {
           await db.insert(rcTransactions).values({
-            userId: resource[0].submitterId,
-            amount: RC_REWARDS.UPVOTE_RECEIVED,
-            type: 'resource_upvoted',
-            referenceId: String(input.resourceId),
-            description: `Your resource "${resource[0].title}" received an upvote`,
+            userId: resourceData[0].contributorId, // Credit the AUTHOR
+            amount: 5, // 5 RC for an upvote
+            type: 'upvote_received',
+            referenceId: input.resourceId,
+            description: `Received upvote on resource: ${resourceData[0].title}`,
           });
+
+          // Update User Total
+          await db.update(users)
+            .set({ reputationCredits: sql`${users.reputationCredits} + 5` })
+            .where(eq(users.id, resourceData[0].contributorId));
         }
-      } else {
-        await db.update(resources)
-          .set({ downvotes: sql`${resources.downvotes} + 1` })
-          .where(eq(resources.id, input.resourceId));
       }
 
-      return { changed: false, newVote: input.vote };
+      // Get updated counts for optimistic UI
+      const updated = await db.select({
+        upvotes: resources.upvotes,
+        downvotes: resources.downvotes
+      })
+        .from(resources)
+        .where(eq(resources.id, input.resourceId))
+        .limit(1);
+
+      return {
+        status: 'success' as const,
+        upvotes: updated[0]?.upvotes ?? 0,
+        downvotes: updated[0]?.downvotes ?? 0,
+        userVote: voteVal
+      };
     }),
 
   /**
-   * GET MY SUBMISSIONS (Protected)
-   * View user's own submitted resources.
+   * CREATE RESOURCE (Protected - Teacher Only)
    */
-  getMySubmissions: protectedProcedure
+  create: protectedProcedure
     .input(z.object({
-      status: z.enum(['pending', 'approved', 'rejected', 'all']).default('all'),
+      title: z.string().min(5, 'Title must be at least 5 characters'),
+      description: z.string().min(20, 'Description must be at least 20 characters'),
+      category: z.string().min(1, 'Category is required'),
+      gradeLevel: z.string().min(1, 'Grade level is required'),
+      resourceType: z.string().min(1, 'Resource type is required'),
+      thumbnailUrl: z.string().url().optional(),
+      files: z.array(z.object({
+        url: z.string().url(),
+        name: z.string(),
+        size: z.number(),
+        type: z.string()
+      })).min(1, 'At least one file is required'),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      }
+
+      // Role Guard
+      if (ctx.user.role !== 'teacher' && ctx.user.role !== 'admin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only Verified Teachers can contribute resources.'
+        });
+      }
+
+      const result = await db.insert(resources).values({
+        contributorId: ctx.user.id,
+        title: input.title,
+        description: input.description,
+        category: input.category,
+        gradeLevel: input.gradeLevel,
+        resourceType: input.resourceType,
+        thumbnailUrl: input.thumbnailUrl ?? null,
+        files: input.files,
+        status: 'pending', // Always pending by default for moderation
+      }).returning();
+
+      // Award RC for submission
+      await db.insert(rcTransactions).values({
+        userId: ctx.user.id,
+        amount: 10,
+        type: 'resource_submitted',
+        referenceId: result[0].id,
+        description: `Submitted resource: ${input.title}`,
+      });
+
+      await db.update(users)
+        .set({ reputationCredits: sql`${users.reputationCredits} + 10` })
+        .where(eq(users.id, ctx.user.id));
+
+      return { resource: result[0], rcEarned: 10 };
+    }),
+
+  /**
+   * GET USER'S CONTRIBUTED RESOURCES (Protected)
+   * For the user's profile/dashboard
+   */
+  getMyResources: protectedProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(50).default(10),
+      cursor: z.number().nullish(),
+      status: z.enum(['pending', 'approved', 'rejected']).optional(),
     }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-
-      let query = db.select()
-        .from(resources)
-        .where(eq(resources.submitterId, ctx.user.id))
-        .orderBy(desc(resources.createdAt));
-
-      return await query;
-    }),
-
-  /**
-   * GET USER'S VOTE ON RESOURCE (Protected)
-   * Check if user has voted on a specific resource.
-   */
-  getMyVote: protectedProcedure
-    .input(z.object({ resourceId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-
-      const result = await db.select()
-        .from(resourceVotes)
-        .where(and(
-          eq(resourceVotes.resourceId, input.resourceId),
-          eq(resourceVotes.userId, ctx.user.id)
-        ))
-        .limit(1);
-
-      if (result.length === 0) {
-        return { hasVoted: false, vote: null };
+      if (!db) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
       }
 
-      return { hasVoted: true, vote: result[0].vote === 1 ? 'up' : 'down' };
+      const whereConditions = [eq(resources.contributorId, ctx.user.id)];
+
+      if (input.status) {
+        whereConditions.push(eq(resources.status, input.status));
+      }
+
+      if (input.cursor) {
+        whereConditions.push(sql`${resources.id} < ${input.cursor}`);
+      }
+
+      const items = await db.select()
+        .from(resources)
+        .where(and(...whereConditions))
+        .orderBy(desc(resources.createdAt))
+        .limit(input.limit + 1);
+
+      let nextCursor: typeof input.cursor | undefined = undefined;
+      if (items.length > input.limit) {
+        const nextItem = items.pop();
+        nextCursor = nextItem!.id;
+      }
+
+      return { items, nextCursor };
     }),
 });
