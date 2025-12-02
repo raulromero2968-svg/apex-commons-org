@@ -6,8 +6,8 @@ import { z } from "zod";
 import { waitlist } from "../drizzle/schema";
 import { getDb } from "./db";
 
-// Import the Backend Triad routers
-import { resourcesRouter } from "./routers/resources";
+// Import the platform routers
+import { resourcesRouter } from "./resourcesRouter";
 import { reputationRouter } from "./routers/reputation";
 import { governanceRouter } from "./routers/governance";
 
